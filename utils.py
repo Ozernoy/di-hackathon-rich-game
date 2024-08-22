@@ -1,3 +1,6 @@
 
 def process_string(x):
-    return "\'{}\'".format(x.replace("\'", "\'\'")) if x else 'NULL' 
+    return add_quotes(x.replace("\'", "\'\'")) if x else 'NULL'
+
+def add_quotes(x):
+    return "\'{}\'".format(x)

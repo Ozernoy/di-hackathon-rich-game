@@ -7,11 +7,11 @@ load_dotenv(dotenv_path)
 
 STOCK_API_KEY = os.environ.get("STOCK_API_KEY")
 
-db_name = 'postgres'
-user = 'postgres'
-host = 'localhost'
-port= '25432'
-password = '1234'
-# port = '5432'
-# password = 'vlad312312'
+DB_NAME = 'stocks'
+USERNAME = 'postgres'
+HOST = 'localhost'
+# PORT = '25432'
+# PASSWORD = '1234'
+PORT = '5432'
+PASSWORD = 'vlad312312'
 

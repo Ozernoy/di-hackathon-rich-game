@@ -1,4 +1,5 @@
 /rich
+__pycache__/
 
 config.py
 .venv
