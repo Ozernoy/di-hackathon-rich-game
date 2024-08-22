@@ -55,7 +55,6 @@ class DB:
             if not self.conn.autocommit:
                 self.connection.commit()
             return cursor
-        
     
     #Create DB and add tables
     def initiate_db(self, db_name):
@@ -80,6 +79,23 @@ class DB:
             adjusted_close INTEGER NOT NULL
             );
     """)
+        
+    def get_united_table(self):
+        self.execute("""
+                    CREATE TABLE company_adjusted_close (
+                    id SERIAL PRIMARY KEY,
+                    company_id INTEGER NOT NULL,
+                    date DATE NOT NULL,
+                    adjusted_close INTEGER NOT NULL,
+                    FOREIGN KEY (company_id) REFERENCES companies(company_id) ON DELETE CASCADE
+                );
+
+
+                    INSERT INTO company_adjusted_close (company_id, date, adjusted_close)
+                    SELECT company_id, date, adjusted_close
+                    FROM stock_rate;
+
+        """)
 
     def get_company(self, symbol):
         query = f"SELECT * FROM companies WHERE symbol = '{symbol}' limit 1;"
