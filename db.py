@@ -1,8 +1,11 @@
 import psycopg2
 from psycopg2.extras import NamedTupleCursor
+from stock_api import StockClient
 
 class DB:
-    def __init__(self, host, db_name, password, username, port='5432') -> None:
+    stock_cl = StockClient
+
+    def __init__(self, host, db_name, password, username, port='5432', autocommit=True) -> None:
         self.connection = psycopg2.connect(
             dbname = db_name,
             user = username,
@@ -10,6 +13,7 @@ class DB:
             host = host,
             port = port
         )
+        self.connection.autocommit = autocommit
     
     def __del__(self) -> None:
         self.connection.close()
@@ -24,7 +28,9 @@ class DB:
     def execute(self, query):
         with self.cursor() as cursor:
             cursor.execute(query)
-            self.connection.commit()
+            if not self.conn.autocommit:
+                self.connection.commit()
             return cursor
     
+        
     
