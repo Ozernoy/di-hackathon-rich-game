@@ -16,6 +16,7 @@ class DB:
             host = host,
             port = port
         )
+        self.connection.autocommit = autocommit
     
     # instead of using __del__
     def close_db_if_necessary(self):
@@ -32,7 +33,8 @@ class DB:
     def execute(self, query):
         with self.cursor() as cursor:
             cursor.execute(query)
-            self.connection.commit()
+            if not self.conn.autocommit:
+                self.connection.commit()
             return cursor
     def connect_to_default_db(self):
         self.close_db_if_necessary()
