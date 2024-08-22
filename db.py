@@ -1,14 +1,16 @@
 import psycopg2
 from psycopg2.extras import NamedTupleCursor
+from stock_api import StockClient
 import settings
 
 class DB:
-    def __init__(self, host, db_name, password, username, port='5432') -> None:
+    def __init__(self, host, db_name, password, username, port='5432', autocommit=True) -> None:
         self.host = host
         self.db_name = db_name
         self.password = password
         self.username = username
         self.port = port
+
         self.connection = psycopg2.connect(
             dbname = db_name,
             user = username,
@@ -16,6 +18,7 @@ class DB:
             host = host,
             port = port
         )
+
         self.connection.autocommit = autocommit
     
     def __del__(self) -> None:
@@ -50,8 +53,8 @@ class DB:
             company_id SERIAL PRIMARY KEY,
             name VARCHAR(50) NOT NULL,
             symbol VARCHAR(50) NOT NULL,
-            DESCRIPTION TEXT NOT NULL,
-            date_listing DATE NOT NULL
+            DESCRIPTION TEXT NOT NULL
+            -- date_listing DATE NOT NULL
             );
 
             CREATE TABLE stock_rate (
@@ -66,6 +69,40 @@ class DB:
             adjusted_close INTEGER NOT NULL
             );
 """)
+
+    def get_company(self, symbol):
+        query = f"SELECT * FROM companies WHERE symbol = '{symbol}';"
+        return self.execute(query).fetchone()
+
+    def add_company(self, name, symbol, description):
+        query = f"INSERT INTO companies (name, symbol, description) VALUES ('{name}', '{symbol}', '{description}');"
+        self.execute(query)
+
+    def insert_stock_rate(self, company_id, sr_date, sr_open, sr_high, sr_low, sr_close, volume, adjusted_close):
+        query = f"""
+            INSERT INTO stock_rate (company_id, date, open, high, low, close, volume, adjusted_close)
+            VALUES ({company_id}, '{sr_date}', {sr_open}, {sr_high}, {sr_low}, {sr_close}, {volume}, {adjusted_close});
+        """
+        self.execute(query)
+
+    def add_stock_history_all(self, symbol):
+        company_id = self.get_company(symbol)['company_id']
+        data = StockClient.get_ts_monthly(symbol)
+        for date, values in data['Monthly Adjusted Time Series']:
+            try:
+                self.insert_stock_rate(
+                    company_id=company_id,
+                    sr_date=date,
+                    sr_open=values['open'],
+                    sr_high=values['high'],
+                    sr_low=values['low'],
+                    sr_close=values['close'],
+                    volume=values['volume'],
+                    adjusted_close=values.adjusted_close
+                )
+            except Exception as e:
+                print(e)
+    
 
     def get_united_table():
         pass
