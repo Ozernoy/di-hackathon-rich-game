@@ -80,20 +80,13 @@ class DB:
             );
     """)
         
-    def get_united_table(self):
-        self.execute("""
-                    CREATE TABLE company_adjusted_close (
-                    id SERIAL PRIMARY KEY,
-                    company_id INTEGER NOT NULL,
-                    date DATE NOT NULL,
-                    adjusted_close INTEGER NOT NULL,
-                    FOREIGN KEY (company_id) REFERENCES companies(company_id) ON DELETE CASCADE
-                );
-
-
-                    INSERT INTO company_adjusted_close (company_id, date, adjusted_close)
-                    SELECT company_id, date, adjusted_close
-                    FROM stock_rate;
+    def get_filtered_table(self, available_companies):
+        self.execute(f"""
+                    CREATE TABLE filtered_table AS
+                    SELECT company_id, name, date, adjusted_close
+                     FROM stock_rate
+                     LEFT JOIN companies ON stock_rate.company_id = companies.company_id
+                    WHERE name IN {available_companies}
 
         """)
 
