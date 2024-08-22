@@ -1,3 +1,5 @@
 /rich
 
 config.py
+.venv
+.env
