@@ -17,8 +17,10 @@ class DB:
             port = port
         )
     
-    def __del__(self) -> None:
-        self.connection.close()
+    # instead of using __del__
+    def close_db_if_necessary(self):
+        if self.connection:
+            self.connection.close()
 
     @property
     def conn(self):
@@ -32,17 +34,30 @@ class DB:
             cursor.execute(query)
             self.connection.commit()
             return cursor
+    def connect_to_default_db(self):
+        self.close_db_if_necessary()
+        self.connection = psycopg2.connect(
+            dbname = 'postgres',
+            user = 'postgress',
+            password = settings.default_password,
+            host = settings.default_host,
+            port = settings.default_port
+        )
     
     #Create DB and add tables
     def initiate_db(self, db_name):
+        
+        self.connect_to_default_db()
         self.execute(f'CREATE DATABASE {db_name};')
+
+         # Reconnect to the newly created database
         self.connection = psycopg2.connect(
-            dbname = db_name,
-            user = self.username,
-            password = self.password,
-            host = self.host,
-            port = self.port
-        )
+        dbname=db_name,
+        user=self.username,
+        password=self.password,
+        host=self.host,
+        port=self.port
+    )
         self.execute("""
             CREATE TABLE companies (
             company_id SERIAL PRIMARY KEY,
