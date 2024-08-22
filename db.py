@@ -1,7 +1,8 @@
 import psycopg2
 from psycopg2.extras import NamedTupleCursor
 from stock_api import StockClient
-import settings
+from settings import *
+from utils import process_string
 
 class DB:
     def __init__(self, host, db_name, password, username, port='5432', autocommit=True) -> None:
@@ -10,6 +11,29 @@ class DB:
         self.password = password
         self.username = username
         self.port = port
+
+    def create_db(self):
+        conn = psycopg2.connect(
+            dbname = 'postgre',
+            user = self.username,
+            password = self.password,
+            host = self.host,
+            port = self.port
+        )
+        with conn.cursor() as cursor:
+            cursor.execute(f'CREATE DATABASE {self.db_name};')
+        
+        conn.commit()
+        conn.close()
+
+    def init_connection(self, autocommit=True):
+        self.connection = psycopg2.connect(
+            dbname = self.db_name,
+            user = self.username,
+            password = self.password,
+            host = self.host,
+            port = self.port
+        )
 
         self.connection.autocommit = autocommit
     
@@ -31,30 +55,10 @@ class DB:
             if not self.conn.autocommit:
                 self.connection.commit()
             return cursor
-    def connect_to_default_db(self):
-        self.close_db_if_necessary()
-        self.connection = psycopg2.connect(
-            dbname = 'postgres',
-            user = 'postgress',
-            password = settings.default_password,
-            host = settings.default_host,
-            port = settings.default_port
-        )
+        
     
     #Create DB and add tables
-    def initiate_db(self):
-        
-        self.connect_to_default_db()
-        self.execute(f'CREATE DATABASE {self.db_name};')
-
-         # Reconnect to the newly created database
-        self.connection = psycopg2.connect(
-        dbname=self.db_name,
-        user=self.username,
-        password=self.password,
-        host=self.host,
-        port=self.port
-    )
+    def initiate_db(self, db_name):
         self.execute("""
             CREATE TABLE companies (
             company_id SERIAL PRIMARY KEY,
@@ -75,13 +79,15 @@ class DB:
             volume INTEGER NOT NULL,
             adjusted_close INTEGER NOT NULL
             );
-""")
+    """)
 
     def get_company(self, symbol):
-        query = f"SELECT * FROM companies WHERE symbol = '{symbol}';"
+        query = f"SELECT * FROM companies WHERE symbol = '{symbol}' limit 1;"
         return self.execute(query).fetchone()
 
     def add_company(self, name, symbol, description):
+        name = process_string(name)
+        description = process_string(description)
         query = f"INSERT INTO companies (name, symbol, description) VALUES ('{name}', '{symbol}', '{description}');"
         self.execute(query)
 

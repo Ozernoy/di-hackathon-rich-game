@@ -12,4 +12,6 @@ user = 'postgres'
 host = 'localhost'
 port= '25432'
 password = '1234'
+# port = '5432'
+# password = 'vlad312312'
 
