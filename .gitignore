@@ -1,4 +1,6 @@
 /rich
 
 config.py
+.venv
+.env
 companies.csv
