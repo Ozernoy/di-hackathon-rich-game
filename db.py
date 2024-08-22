@@ -3,6 +3,7 @@ from psycopg2.extras import NamedTupleCursor
 from stock_api import StockClient
 from settings import *
 from utils import process_string, add_quotes
+import settings
 
 class DB:
     def __init__(self, host, db_name, password, username, port='5432', autocommit=True) -> None:
@@ -13,6 +14,12 @@ class DB:
         self.port = port
 
     def create_db(self):
+        print(f"DB_NAME: {DB_NAME}")
+        print(f"USERNAME: {USERNAME}")
+        print(f"PASSWORD: {PASSWORD}")
+        print(f"HOST: {HOST}")
+        print(f"PORT: {PORT}")
+
         conn = psycopg2.connect(
             dbname = 'postgres',
             user = self.username,
@@ -148,11 +155,6 @@ class DB:
                 print(date, values)
                 print(e.__class__.__name__, e)
 
-    def get_united_table():
-        pass
-
-
-
 def test():
     db = DB(HOST, DB_NAME, PASSWORD, USERNAME, PORT)
 
@@ -162,7 +164,7 @@ def test():
 
     db.add_company('Apple', 'AAPL', 'Apple Inc.')
     db.add_stock_history_all('AAPL')
-    d
+    
 
 if __name__ == '__main__':
     test()
