@@ -48,10 +48,15 @@ class GUI:
             user_choices[user] = self.user_choose_companies(user)
         return user_choices
 
-# Example usage:
+# TEST
 available_companies = ["Apple", "Google", "Microsoft", "Amazon"]
 gui = GUI(available_companies)
 user_choices = gui.combined_users_choices()
 
 print("\nUser choices:")
 print(user_choices)
+
+"""
+по 
+
+"""

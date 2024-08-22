@@ -16,5 +16,5 @@ list_of_companies = GUI.ask_companies(available_companies, available_users)
 
 '''
 
-db.close()
+db.close_db_if_necessary()
 
