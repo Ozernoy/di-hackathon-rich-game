@@ -48,15 +48,12 @@ class GUI:
             user_choices[user] = self.user_choose_companies(user)
         return user_choices
 
-# TEST
-available_companies = ["Apple", "Google", "Microsoft", "Amazon"]
-gui = GUI(available_companies)
-user_choices = gui.combined_users_choices()
 
-print("\nUser choices:")
-print(user_choices)
 
-"""
-по 
 
-"""
+if __name__ == '__main__':
+    available_companies = ["Apple", "Google", "Microsoft", "Amazon"]
+    gui = GUI(available_companies)
+    user_choices = gui.combined_users_choices()
+    print("\nUser choices:")
+    print(user_choices)
