@@ -98,6 +98,16 @@ class DB:
             CREATE INDEX company_id_idx ON stock_rate (company_id);
         """)
 
+    def get_filtered_table(self, available_companies):
+        self.execute(f"""
+                    CREATE TABLE filtered_table AS
+                    SELECT company_id, name, date, adjusted_close
+                     FROM stock_rate
+                     LEFT JOIN companies ON stock_rate.company_id = companies.company_id
+                    WHERE name IN {available_companies}
+
+        """)
+
     def get_company(self, symbol):
         query = f"SELECT * FROM companies WHERE symbol = '{symbol}' limit 1;"
         return self.fetchone(query)
