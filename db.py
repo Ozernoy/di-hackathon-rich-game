@@ -31,6 +31,7 @@ class DB:
             if not self.conn.autocommit:
                 self.connection.commit()
             return cursor
-    
+
+
         
     
