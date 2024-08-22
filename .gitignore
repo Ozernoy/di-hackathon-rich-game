@@ -5,3 +5,4 @@ config.py
 .venv
 .env
 companies.csv
+setting.py

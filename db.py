@@ -162,6 +162,7 @@ def test():
 
     db.add_company('Apple', 'AAPL', 'Apple Inc.')
     db.add_stock_history_all('AAPL')
+    d
 
 if __name__ == '__main__':
     test()
