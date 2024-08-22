@@ -11,14 +11,6 @@ class DB:
         self.username = username
         self.port = port
 
-        self.connection = psycopg2.connect(
-            dbname = db_name,
-            user = username,
-            password = password,
-            host = host,
-            port = port
-        )
-
         self.connection.autocommit = autocommit
     
     # instead of using __del__
@@ -50,14 +42,14 @@ class DB:
         )
     
     #Create DB and add tables
-    def initiate_db(self, db_name):
+    def initiate_db(self):
         
         self.connect_to_default_db()
-        self.execute(f'CREATE DATABASE {db_name};')
+        self.execute(f'CREATE DATABASE {self.db_name};')
 
          # Reconnect to the newly created database
         self.connection = psycopg2.connect(
-        dbname=db_name,
+        dbname=self.db_name,
         user=self.username,
         password=self.password,
         host=self.host,
@@ -119,7 +111,9 @@ class DB:
                 print(e)
     
 
-    def get_united_table():
+    def get_united_table(self):
         pass
 
-    
+# Test
+db1 = DB('localhost', 'stockDB', '1234', 'postgres', '5432')
+db1.initiate_db()
