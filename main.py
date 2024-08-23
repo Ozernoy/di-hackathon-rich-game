@@ -5,7 +5,7 @@ from db import DB
 
 
 
-db = DB(DB_NAME, USERNAME, HOST, PASSWORD, PORT)
+db = DB(HOST,DB_NAME,PASSWORD, USERNAME, PORT)
 db.create_db()
 db.init_connection()
 db.create_tables(drop=False)
