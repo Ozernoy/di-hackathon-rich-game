@@ -1,4 +1,4 @@
-class GUI:
+class UI:
 
     def __init__(self, available_companies) -> None:
         self.available_companies = available_companies
@@ -47,16 +47,11 @@ class GUI:
             print(f"\n{user}'s turn to choose companies.")
             user_choices[user] = self.user_choose_companies(user)
         return user_choices
+    
 
-# TEST
-available_companies = ["Apple", "Google", "Microsoft", "Amazon"]
-gui = GUI(available_companies)
-user_choices = gui.combined_users_choices()
-
-print("\nUser choices:")
-print(user_choices)
-
-"""
-по 
-
-"""
+if __name__ == '__main__':
+    available_companies = ["Apple", "Google", "Microsoft", "Amazon"]
+    gui = GUI(available_companies)
+    user_choices = gui.combined_users_choices()
+    print("\nUser choices:")
+    print(user_choices)

@@ -10,8 +10,7 @@ STOCK_API_KEY = os.environ.get("STOCK_API_KEY")
 DB_NAME = 'stocks'
 USERNAME = 'postgres'
 HOST = 'localhost'
-# PORT = '25432'
-# PASSWORD = '1234'
+PASSWORD = '1234'
 PORT = '5432'
-PASSWORD = 'vlad312312'
+#PASSWORD = 'vlad312312'
 

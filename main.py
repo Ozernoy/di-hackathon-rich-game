@@ -1,13 +1,16 @@
-import settings
-from UI import GUI
+from settings import *
+from ui import UI
 from db import DB
-#from extract import Extractor
 
 
 
 
-db = DB(settings.default_db_name, settings.default_user_name, settings.default_host, settings.rename_port, settings.rename_password)
-db.initiate_db('companies_stock_db')
+db = DB(HOST,DB_NAME,PASSWORD, USERNAME, PORT)
+db.create_db()
+db.init_connection()
+db.create_tables(drop=False)
+db.add_company('Apple',  'AAPL', 'Apple Inc.')
+db.add_stock_history_all('AAPL')
 
 '''
 available_users = GUI.ask_names()
