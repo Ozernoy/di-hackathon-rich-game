@@ -67,7 +67,6 @@ class DB:
             cursor.execute(query) 
             return cursor.fetchall()
     
-    #Create DB and add tables
     def create_tables(self, drop=False):
         if drop:
             self.execute("DROP TABLE IF EXISTS companies CASCADE;")
@@ -162,6 +161,8 @@ def test():
 
     db.add_company('Apple', 'AAPL', 'Apple Inc.')
     db.add_stock_history_all('AAPL')
+
+
 
 if __name__ == '__main__':
     test()
