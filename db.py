@@ -1,3 +1,5 @@
+# db.py
+
 import psycopg2
 from psycopg2.extras import NamedTupleCursor
 from stock_api import StockClient
@@ -15,20 +17,14 @@ class DB:
         self.port = port
 
     def create_db(self):
-        """Create a new database."""
+        """Create a new database using the existing connection."""
         try:
-            self.init_connection(dbname='postgres')  # Connect to default 'postgres' first
-
             with self.connection.cursor() as cursor:
                 cursor.execute(f'CREATE DATABASE {self.db_name};')
                 print(f"Database '{self.db_name}' created successfully.")
-
+        
         except psycopg2.Error as e:
             print(f"An error occurred while creating the database: {e}")
-        finally:
-            self.close_db_if_necessary()  # Ensure the connection to 'postgres' is closed even if we got error
-
-        self.init_connection()  # Reinitialize connection to the newly created database
 
     def init_connection(self, dbname=None, autocommit=True):
         """Initialize a connection to the database."""
@@ -80,8 +76,8 @@ class DB:
         self.execute("""
             CREATE TABLE companies (
             company_id SERIAL PRIMARY KEY,
-            name VARCHAR(50) NOT NULL,
-            symbol VARCHAR(50) NOT NULL,
+            name TEXT NOT NULL,
+            symbol VARCHAR(50) NOT NULL UNIQUE,
             DESCRIPTION TEXT NOT NULL
             -- date_listing DATE NOT NULL
             );
@@ -188,17 +184,41 @@ class DB:
                 print(date, values)
                 print(e.__class__.__name__, e)
 
+
+    def add_all_companies(self, default_description="Default company description"):
+        """
+        Retrieve all symbols and names from the StockClient and add them to the companies table.
+        """
+        stock_client = StockClient()
+        symbols_and_names = stock_client.get_symbols_and_names()
+        counter = 0
+        for symbol, name in symbols_and_names:
+            try:
+                self.add_company(name, symbol, default_description)
+                counter += 1
+            except psycopg2.Error as e:
+                print(f"Error adding company {name} ({symbol}): {e}")
+        print(f"Added {counter} companies.")
+
+
+
 def test():
     db = DB(HOST, DB_NAME, PASSWORD, USERNAME, PORT)
 
     try:
-        db.create_db()
-        db.create_tables()
-
-        db.add_company('Apple', 'AAPL', 'Apple Inc.')
-        db.add_stock_history_all('AAPL')
+        # If the database does not exist, create it
+        #db.init_connection(dbname='postgres')
+        #db.create_db()
+        #db.close_db_if_necessary()  # Close the connection to 'postgres' after creating the database
+        
+        # Now connect to the newly created database
+        db.init_connection()
+        #db.create_tables()
+        #db.drop_database()
+        db.add_all_companies()
+        
     finally:
-        db.drop_database()
+        db.close_db_if_necessary()
 
 if __name__ == '__main__':
     test()
