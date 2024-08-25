@@ -5,7 +5,6 @@ from stock_api import StockClient
 from settings import *
 from utils import process_string, add_quotes
 import settings
-import pandas as pd
 
 class DB:
 
@@ -98,6 +97,16 @@ class DB:
             );
                      
             CREATE INDEX company_id_idx ON stock_prices (company_id);
+        """)
+
+        # Create the users table
+        self.execute("""
+            CREATE TABLE users (
+            record_id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            user_name TEXT NOT NULL,
+            company_id INTEGER REFERENCES companies (company_id) ON DELETE CASCADE
+            );
         """)
 
     def drop_database(self):
@@ -200,6 +209,9 @@ class DB:
         """Add stock history for a company."""
         data = StockClient.get_ts_monthly(symbol)
         print(list(data.keys()))
+        if 'Monthly Adjusted Time Series' not in data:
+                print(f"No valid stock data found for symbol: {symbol}")
+                return
         for date, values in data['Monthly Adjusted Time Series'].items():
             try:
                 self.insert_stock_prices(
@@ -270,7 +282,7 @@ class DB:
             symbol = company.symbol
             print(f"Adding stock history for {company.name} ({symbol})")
             try:
-                self.add_stock_history_all(symbol)
+                self.add_stock_price_by_symbol(symbol)
             except Exception as e:
                 print(f"Failed to add stock history for {symbol}: {e}")
     
@@ -284,8 +296,8 @@ class DB:
         query_latest_start_date = """
             SELECT MAX(start_date) AS latest_start_date
             FROM (
-                SELECT MIN(date) AS start_date
-                FROM stock_rate
+                SELECT MIN(price_date) AS start_date
+                FROM stock_prices
                 GROUP BY company_id
             ) AS subquery;
         """
@@ -294,8 +306,8 @@ class DB:
         query_earliest_end_date = """
             SELECT MIN(end_date) AS earliest_end_date
             FROM (
-                SELECT MAX(date) AS end_date
-                FROM stock_rate
+                SELECT MAX(price_date) AS end_date
+                FROM stock_prices
                 GROUP BY company_id
             ) AS subquery;
         """
@@ -315,8 +327,8 @@ class DB:
 
         # Delete rows outside this date range
         delete_query = f"""
-            DELETE FROM stock_rate
-            WHERE date < '{latest_start_date}' OR date > '{earliest_end_date}';
+            DELETE FROM stock_prices
+            WHERE price_date < '{latest_start_date}' OR price_date > '{earliest_end_date}';
         """
 
         # Execute the delete query
@@ -337,22 +349,43 @@ class DB:
             self.add_stock_price_company_id(c.company_id, c.symbol)
 
 
+company_symbols = [
+    "AAPL",  # Apple Inc.
+    "MSFT",  # Microsoft Corporation
+    "GOOGL",  # Alphabet Inc. (Google)
+    "AMZN",  # Amazon.com Inc.
+    "FB",  # Meta Platforms Inc. (formerly Facebook)
+    "TSLA",  # Tesla Inc.
+    "BRK.B",  # Berkshire Hathaway Inc. (Class B)
+    "NVDA",  # NVIDIA Corporation
+    "JPM",  # JPMorgan Chase & Co.
+    "V",  # Visa Inc.
+    "JNJ",  # Johnson & Johnson
+    "WMT",  # Walmart Inc.
+    "PG",  # Procter & Gamble Co.
+    "DIS",  # The Walt Disney Company
+    "NFLX"  # Netflix Inc.
+]
+
+
 def test():
+
     db = DB(HOST, DB_NAME, PASSWORD, USERNAME, PORT)
 
     try:
         # If the database does not exist, create it
-        #  db.init_connection(dbname='postgres')
+        #db.init_connection(dbname='postgres')
         #db.create_db()
         #db.close_db_if_necessary()  # Close the connection to 'postgres' after creating the database
         
         # Now connect to the newly created database
         db.init_connection()
-        db.exclude_outside_date_range()
+
         #db.create_tables()
         #db.drop_database()
         #db.add_all_companies()
-        #db.add_stock_history_for_selected_companies(ids=list(range(1, 10)))
+        db.add_stock_history_for_selected_companies(symbols=company_symbols)
+        db.exclude_outside_date_range()
     finally:
         db.close_db_if_necessary()
 

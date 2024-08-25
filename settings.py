@@ -13,9 +13,9 @@ STOCK_API_KEY="JPZZMQXDYNL9XFJX"
 DB_NAME = 'stocks'
 USERNAME = 'postgres'
 HOST = 'localhost'
-# PASSWORD = '1234'
+PASSWORD = '1234'
 PORT = '5432'
-PASSWORD = 'vlad312312'
+#PASSWORD = 'vlad312312'
 
 
 # STOCK_API_KEY=THQSP5BS8B7CGOYI # https://www.alphavantage.co/documentation/
