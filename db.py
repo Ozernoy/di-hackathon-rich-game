@@ -368,6 +368,8 @@ company_symbols = [
 ]
 
 
+db = DB(HOST, DB_NAME, PASSWORD, USERNAME, PORT)
+
 def test():
 
     db = DB(HOST, DB_NAME, PASSWORD, USERNAME, PORT)
@@ -390,7 +392,6 @@ def test():
         db.close_db_if_necessary()
 
 def main():
-    db = DB(HOST, DB_NAME, PASSWORD, USERNAME, PORT)
     db.init_connection(db.db_name)
     print('API_KEY:', StockClient.api_key)
 
@@ -408,6 +409,7 @@ def main():
     # companies = db.get_companies()[:25]
     db.add_stock_price_all(companies)
     # print(len(companies), companies)
+
 
 
 if __name__ == '__main__':

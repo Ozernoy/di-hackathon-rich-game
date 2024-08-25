@@ -8,7 +8,9 @@ from datetime import datetime, timedelta
 from ui import UI
 from db import DB
 from settings import *
-from visualization import animate_portfolio_values
+from visualization import animate_portfolio_values, show_winner_stats, plot_portfolio_pie
+import tkinter as tk
+from tkinter import messagebox
 
 class  Player:
     def __init__(self, name, initial_budget=1000):
@@ -92,6 +94,10 @@ class Game:
         for player in self.players:
             self.calculate_player_portfolio(player)
 
+    def calculate_sum(self):
+        for player in self.players:
+            player.portfolio_history_sum = player.portfolio_history.groupby(['year', 'month']).sum(['value']).reset_index()
+
     def calculate_winner(self):
         end_date_sum = lambda p: p.portfolio_history[(
             (p.portfolio_history.month == self.end_date.month) 
@@ -103,6 +109,7 @@ class Game:
     def run_game(self):
         self.get_random_companies(self.n_comp_pp * self.players_num)
         # Company selection phase
+        print("Company selection phase. Date range: {} - {}".format(self.start_date, self.end_date))
         for _ in range(5):  # Each player selects 5 companies
             for player in self.players:
                 while True:
@@ -119,14 +126,16 @@ class Game:
 
         self.get_companies_stock_price()
         self.allocate_shares()
+        self.calculate_sum()
         # Simulation and visualization phase
-        anim = animate_portfolio_values(self.players)
+        anim = animate_portfolio_values(self.players, self.start_date, self.end_date)
         plt.show()
-
+        show_winner_stats(self.players)
         # Determine and display winner
         winner = self.calculate_winner()
         # self.visualizer.display_final_results(self.players)
         print(f"The winner is {winner.name}!")
+
 
     def run_test(self):
         self.get_random_companies(self.n_comp_pp * self.players_num)
@@ -143,14 +152,13 @@ class Game:
 
         self.get_companies_stock_price()
         self.allocate_shares()
+        self.calculate_sum()
         # Simulation and visualization phase
-        anim = animate_portfolio_values(self.players)
+        anim = animate_portfolio_values(self.players, self.start_date, self.end_date)
         plt.show()
+        show_winner_stats(self.players)
+        plot_portfolio_pie(self.players)
 
-        # Determine and display winner
-        winner = self.calculate_winner()
-        # self.visualizer.display_final_results(self.players)
-        print(f"The winner is {winner.name}!")
 
 def main_test():
 
@@ -194,8 +202,8 @@ def main():
     game.run_game()
 
 if __name__ == "__main__":
-    main()
-    # main_test()
+    # main()
+    main_test()
 
 
 
