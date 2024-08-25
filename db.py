@@ -17,20 +17,14 @@ class DB:
         self.port = port
 
     def create_db(self):
-        """Create a new database."""
+        """Create a new database using the existing connection."""
         try:
-            self.init_connection(dbname='postgres')  # Connect to default 'postgres' first
-
             with self.connection.cursor() as cursor:
                 cursor.execute(f'CREATE DATABASE {self.db_name};')
                 print(f"Database '{self.db_name}' created successfully.")
-
+        
         except psycopg2.Error as e:
             print(f"An error occurred while creating the database: {e}")
-        finally:
-            self.close_db_if_necessary()  # Ensure the connection to 'postgres' is closed even if we got error
-
-        self.init_connection()  # Reinitialize connection to the newly created database
 
     def init_connection(self, dbname=None, autocommit=True):
         """Initialize a connection to the database."""
@@ -84,8 +78,8 @@ class DB:
         self.execute("""
             CREATE TABLE companies (
             company_id SERIAL PRIMARY KEY,
-            name VARCHAR(50) NOT NULL,
-            symbol VARCHAR(50) NOT NULL,
+            name TEXT NOT NULL,
+            symbol VARCHAR(50) NOT NULL UNIQUE,
             DESCRIPTION TEXT NOT NULL
             -- date_listing DATE NOT NULL
             );
@@ -198,6 +192,9 @@ class DB:
 
     def add_stock_price_company_id(self, company_id, symbol):
         """Add stock history for a company."""
+        company_id = self.get_company(symbol)
+        #print(company_id)
+        company_id = company_id.company_id
         data = StockClient.get_ts_monthly(symbol)
         print(list(data.keys()), data)
         for date, values in data['Monthly Adjusted Time Series'].items():
@@ -213,8 +210,107 @@ class DB:
                     adjusted_close=values['5. adjusted close']
                 )
             except Exception as e:
-                print(date, values)
-                print(e.__class__.__name__, e)
+                #print(date, values)
+                #print(e.__class__.__name__, e)
+                pass
+
+
+    def add_all_companies(self, default_description="Default company description"):
+        """
+        Retrieve all symbols and names from the StockClient and add them to the companies table.
+        """
+        stock_client = StockClient()
+        symbols_and_names = stock_client.get_symbols_and_names()
+        counter = 0
+        for symbol, name in symbols_and_names:
+            try:
+                self.add_company(name, symbol, default_description)
+                counter += 1
+            except psycopg2.Error as e:
+                print(f"Error adding company {name} ({symbol}): {e}")
+        print(f"Added {counter} companies.")
+
+    def get_all_companies(self):
+        """Retrieve all companies from the database."""
+        query = "SELECT * FROM companies;"
+        return self.fetchall(query)
+    
+    def get_companies_by_criteria(self, ids=None, names=None, symbols=None):
+        """Retrieve companies based on provided criteria: ids, names, or symbols."""
+        conditions = []
+        if ids:
+            conditions.append("company_id IN ({})".format(','.join(map(str, ids))))
+        if names:
+            formatted_names = ','.join("'{}'".format(name) for name in names)
+            conditions.append("name IN ({})".format(formatted_names))
+        if symbols:
+            formatted_symbols = ','.join("'{}'".format(symbol) for symbol in symbols)
+            conditions.append("symbol IN ({})".format(formatted_symbols))
+        
+        where_clause = " OR ".join(conditions)
+        query = "SELECT * FROM companies WHERE {};".format(where_clause)
+        return self.fetchall(query)
+    
+    def add_stock_history_for_selected_companies(self, ids=None, names=None, symbols=None):
+        """Add stock history for selected companies based on IDs, names, or symbols."""
+        companies = self.get_companies_by_criteria(ids=ids, names=names, symbols=symbols)
+        for company in companies:
+            symbol = company.symbol
+            print(f"Adding stock history for {company.name} ({symbol})")
+            try:
+                self.add_stock_history_all(symbol)
+            except Exception as e:
+                print(f"Failed to add stock history for {symbol}: {e}")
+    
+
+    def get_stock_history_date_range(self):
+        """
+        Find the latest start date and the earliest end date of stock history intersection across all companies.
+        Returns a tuple (latest_start_date, earliest_end_date).
+        """
+        # Query to find the latest start date (i.e., the maximum of the earliest dates for all companies)
+        query_latest_start_date = """
+            SELECT MAX(start_date) AS latest_start_date
+            FROM (
+                SELECT MIN(date) AS start_date
+                FROM stock_rate
+                GROUP BY company_id
+            ) AS subquery;
+        """
+
+        # Query to find the earliest end date (i.e., the minimum of the latest dates for all companies)
+        query_earliest_end_date = """
+            SELECT MIN(end_date) AS earliest_end_date
+            FROM (
+                SELECT MAX(date) AS end_date
+                FROM stock_rate
+                GROUP BY company_id
+            ) AS subquery;
+        """
+
+        latest_start_date = self.fetchone(query_latest_start_date).latest_start_date
+        earliest_end_date = self.fetchone(query_earliest_end_date).earliest_end_date
+
+        return latest_start_date, earliest_end_date
+    
+    def exclude_outside_date_range(self):
+        """
+        Exclude (delete) all rows from the stock_rate table that fall outside 
+        the intersection of the date ranges across all companies.
+        """
+        # Get the latest start date and earliest end date that overlap across all companies
+        latest_start_date, earliest_end_date = self.get_stock_history_date_range()
+
+        # Delete rows outside this date range
+        delete_query = f"""
+            DELETE FROM stock_rate
+            WHERE date < '{latest_start_date}' OR date > '{earliest_end_date}';
+        """
+
+        # Execute the delete query
+        self.execute(delete_query)
+        print(f"Deleted rows outside the date range {latest_start_date} to {earliest_end_date}.")
+
 
     def add_stock_price(self, symbol):
         """Add stock history for a company."""
@@ -232,17 +328,21 @@ class DB:
 def test():
     db = DB(HOST, DB_NAME, PASSWORD, USERNAME, PORT)
 
-    db.create_db()
-    db.create_tables()
-
-    # try:
-    #     db.create_db()
-    #     db.create_tables()
-    # except:
-    #     pass
-
-    # db.add_company('Apple', 'AAPL', 'Apple Inc.')
-    # db.add_stock_price_all('AAPL')
+    try:
+        # If the database does not exist, create it
+        #  db.init_connection(dbname='postgres')
+        #db.create_db()
+        #db.close_db_if_necessary()  # Close the connection to 'postgres' after creating the database
+        
+        # Now connect to the newly created database
+        db.init_connection()
+        db.exclude_outside_date_range()
+        #db.create_tables()
+        #db.drop_database()
+        #db.add_all_companies()
+        #db.add_stock_history_for_selected_companies(ids=list(range(1, 10)))
+    finally:
+        db.close_db_if_necessary()
 
 def main():
     db = DB(HOST, DB_NAME, PASSWORD, USERNAME, PORT)

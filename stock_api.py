@@ -1,6 +1,9 @@
-from settings import STOCK_API_KEY
+#stock_api.py
+
 import requests
-import os
+import csv
+from io import StringIO
+from settings import STOCK_API_KEY
 
 class StockClient:
     api_key = STOCK_API_KEY
@@ -11,26 +14,51 @@ class StockClient:
 
     @staticmethod
     def get_response_data(url):
-        resp = requests.get(url)
-        if resp.status_code == 200:
-            return resp.json()
-        else:
-            raise Exception(f'Error. Response code: {resp.status_code}')
+        try:
+            resp = requests.get(url)
+            resp.raise_for_status()  # Raises an HTTPError if the HTTP request returned an unsuccessful status code
+            #print(f"Response status code: {resp.status_code}")
+            #print(f"Response content: {resp.text[:500]}")  # Print the first 500 characters of the response for debugging
+
+            # Check if the response is CSV (This happens when function = LISTING_STATUS)
+            if "symbol,name,exchange" in resp.text:
+                # Parse the CSV data
+                csv_data = StringIO(resp.text)
+                reader = csv.DictReader(csv_data)
+                return list(reader)
+            else:
+                # Assume the response should be JSON
+                return resp.json()
+
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+        except requests.exceptions.RequestException as req_err:
+            print(f"Request error occurred: {req_err}")
+        except requests.exceptions.JSONDecodeError as json_err:
+            print(f"JSON decode error: {json_err} - Response content: {resp.text[:500]}")
+
+        return None  # Return None if there was an error
     
     @classmethod
-    def construct_url(cls, func, symbol, **kwargs):
-        url = cls.base_url + '?function={func}&symbol={symbol}&apikey={api_key}'
+    def construct_url(cls, func, symbol=None, **kwargs):
+        """
+        Construct the API URL based on the function and optional symbol and parameters.
+        """
+        url = f"{cls.base_url}?function={func}"
+        
+        if symbol:
+            url += f"&symbol={symbol}"
+        
+        url += f"&apikey={cls.api_key}"
+        
         if kwargs:
             url += '&' + '&'.join([f'{key}={val}' for key, val in kwargs.items()])
-        url = url.format(
-            func=func,
-            symbol=symbol,
-            api_key=cls.api_key
-        )
+        
         return url
 
     @classmethod
     def get_ts_monthly(cls, symbol, adj=True):
+        #! Looks like we do not need condition here
         url = cls.construct_url('TIME_SERIES_MONTHLY_ADJUSTED' if adj else 'TIME_SERIES_MONTHLY_ADJUSTED', symbol)
         return cls.get_response_data(url)
     
@@ -39,8 +67,20 @@ class StockClient:
         url = cls.construct_url('OVERVIEW', symbol)
         return cls.get_response_data(url)
 
+    @classmethod
+    def get_symbols_and_names(cls):
+        url = cls.construct_url('LISTING_STATUS')
+        data = cls.get_response_data(url)
+
+        if not data:
+            print("No data retrieved or data is invalid.")
+            return []
+
+        symbols_and_names = [(entry['symbol'], entry['name']) for entry in data if 'symbol' in entry and 'name' in entry]
+        return symbols_and_names
 
 
 
 if __name__ == '__main__':
     res = StockClient.get_ts_monthly('AAPL')
+    print(res)
