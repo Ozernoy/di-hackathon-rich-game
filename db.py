@@ -1,7 +1,6 @@
-# db.py
-
+import csv
 import psycopg2
-from psycopg2.extras import NamedTupleCursor
+from psycopg2.extras import NamedTupleCursor, RealDictCursor
 from stock_api import StockClient
 from settings import *
 from utils import process_string, add_quotes
@@ -70,9 +69,11 @@ class DB:
             cursor.execute(query) 
             return cursor.fetchall()
     
-    #Create DB and add tables
-    def create_tables(self):
-        """Create the necessary tables in the database."""
+    def create_tables(self, drop=False):
+        if drop:
+            self.execute("DROP TABLE IF EXISTS companies CASCADE;")
+            self.execute("DROP TABLE IF EXISTS stock_prices;")
+
         self.execute("""
             CREATE TABLE companies (
             company_id SERIAL PRIMARY KEY,
@@ -82,20 +83,20 @@ class DB:
             -- date_listing DATE NOT NULL
             );
 
-            CREATE TABLE stock_rate (
-            stock_rate_id SERIAL PRIMARY KEY,
+            CREATE TABLE stock_prices (
+            stock_price_id SERIAL PRIMARY KEY,
             company_id INTEGER REFERENCES companies (company_id) ON DELETE CASCADE,
-            date DATE NOT NULL,
+            price_date DATE NOT NULL,
             open NUMERIC NOT NULL,
             high NUMERIC NOT NULL,
             low NUMERIC NOT NULL,
             close NUMERIC NOT NULL,
             volume NUMERIC NOT NULL,
             adjusted_close NUMERIC NOT NULL,
-            UNIQUE(company_id, date)
+            UNIQUE(company_id, price_date)
             );
                      
-            CREATE INDEX company_id_idx ON stock_rate (company_id);
+            CREATE INDEX company_id_idx ON stock_prices (company_id);
         """)
 
         # Create the users table
@@ -139,22 +140,39 @@ class DB:
             self.connection = None  # Reset connection
 
 
-    '''def get_filtered_table(self, available_companies):
+    def get_companies_stock_price(self, companies_id, start_date=None, end_date=None):
         """Create a filtered table for specific companies."""
-        self.execute(f"""
-                    CREATE TABLE filtered_table AS
-                    SELECT company_id, name, date, adjusted_close
-                     FROM stock_rate
-                     LEFT JOIN companies ON stock_rate.company_id = companies.company_id
-                    WHERE name IN {available_companies}
+        query = """
+            SELECT name, symbol, sp.*,
+                date_part('year', price_date) AS year,
+                date_part('month', price_date) AS month
+            FROM stock_prices sp
+            JOIN companies c ON sp.company_id = c.company_id
+            WHERE c.company_id IN ({})
+        """.format(', '.join(map(str, companies_id)))
 
-        """)'''
+        if start_date:
+            query += f" AND price_date >= '{start_date}'"
+        
+        if end_date:
+            query += f" AND price_date <= '{end_date}'"
+
+        print(query)
+        return self.fetchall(query)
 
     def get_company(self, symbol):
         """Retrieve a company from the database by its symbol."""
         query = f"SELECT * FROM companies WHERE symbol = '{symbol}' limit 1;"
         return self.fetchone(query)
     
+    def get_random_companies(self, n):
+        query = f"SELECT * FROM companies ORDER BY RANDOM() LIMIT {n};"
+        return self.fetchall(query)
+    
+    def get_companies(self):
+        query = "SELECT * FROM companies;"
+        return self.fetchall(query)
+
     def add_company(self, name, symbol, description):
         """Add a company to the database."""
         name = process_string(name)
@@ -163,37 +181,61 @@ class DB:
         query = f"INSERT INTO companies (name, symbol, description) VALUES ({name}, {symbol}, {description});"
         self.execute(query)
 
-    def insert_stock_rate(self, company_id, sr_date, sr_open, sr_high, sr_low, sr_close, volume, adjusted_close):
+    def add_companies_from_csv(self, filename):
+        """Add companies from a CSV file to the database."""
+        with open(filename, 'r') as f:
+            reader = csv.reader(f)
+            next(reader)  # Skip header row
+            for row in reader:
+                name, symbol, description = row
+                self.add_company(name, symbol, description)
+
+    def insert_stock_prices(self, company_id, sr_date, sr_open, sr_high, sr_low, sr_close, volume, adjusted_close):
         """Insert a stock rate into the database."""
         sr_date = add_quotes(sr_date)
         query = f"""
-            INSERT INTO stock_rate (company_id, date, open, high, low, close, volume, adjusted_close)
+            INSERT INTO stock_prices (company_id, price_date, open, high, low, close, volume, adjusted_close)
             VALUES ({company_id}, {sr_date}, {sr_open}, {sr_high}, {sr_low}, {sr_close}, {volume}, {adjusted_close});
         """
         self.execute(query)
 
-    def add_stock_history_all(self, symbol):
-        """Add stock history for a company."""
-        company_id = self.get_company(symbol)
-        #print(company_id)
-        company_id = company_id.company_id
-        data = StockClient.get_ts_monthly(symbol)
-        for date, values in data['Monthly Adjusted Time Series'].items():
-            try:
-                self.insert_stock_rate(
-                    company_id=company_id,
-                    sr_date=date,
-                    sr_open=values['1. open'],
-                    sr_high=values['2. high'],
-                    sr_low=values['3. low'],
-                    sr_close=values['4. close'],
-                    volume=values['6. volume'],
-                    adjusted_close=values['5. adjusted close']
-                )
-            except Exception as e:
-                #print(date, values)
-                #print(e.__class__.__name__, e)
-                pass
+    def add_stock_price_by_symbol(self, symbol):
+        """Add stock history for a company identified by its symbol."""
+        try:
+            # Retrieve the company information based on the symbol
+            company = self.get_company(symbol)
+            if not company:
+                print(f"No company found with symbol: {symbol}")
+                return
+
+            company_id = company.company_id
+
+            # Fetch stock data from the StockClient
+            data = StockClient.get_ts_monthly(symbol)
+            if 'Monthly Adjusted Time Series' not in data:
+                print(f"No valid stock data found for symbol: {symbol}")
+                return
+
+            # Insert stock prices into the database
+            for date, values in data['Monthly Adjusted Time Series'].items():
+                try:
+                    self.insert_stock_prices(
+                        company_id=company_id,
+                        sr_date=date,
+                        sr_open=values['1. open'],
+                        sr_high=values['2. high'],
+                        sr_low=values['3. low'],
+                        sr_close=values['4. close'],
+                        volume=values['6. volume'],
+                        adjusted_close=values['5. adjusted close']
+                    )
+                except Exception as e:
+                    print(f"Failed to insert stock data for {symbol} on {date}: {e}")
+
+        except Exception as e:
+            print(f"Failed to add stock price data for symbol '{symbol}': {e}")
+
+
 
 
     def add_all_companies(self, default_description="Default company description"):
@@ -239,7 +281,7 @@ class DB:
             symbol = company.symbol
             print(f"Adding stock history for {company.name} ({symbol})")
             try:
-                self.add_stock_history_all(symbol)
+                self.add_stock_price_by_symbol(symbol)
             except Exception as e:
                 print(f"Failed to add stock history for {symbol}: {e}")
     
@@ -253,8 +295,8 @@ class DB:
         query_latest_start_date = """
             SELECT MAX(start_date) AS latest_start_date
             FROM (
-                SELECT MIN(date) AS start_date
-                FROM stock_rate
+                SELECT MIN(price_date) AS start_date
+                FROM stock_prices
                 GROUP BY company_id
             ) AS subquery;
         """
@@ -263,8 +305,8 @@ class DB:
         query_earliest_end_date = """
             SELECT MIN(end_date) AS earliest_end_date
             FROM (
-                SELECT MAX(date) AS end_date
-                FROM stock_rate
+                SELECT MAX(price_date) AS end_date
+                FROM stock_prices
                 GROUP BY company_id
             ) AS subquery;
         """
@@ -284,8 +326,8 @@ class DB:
 
         # Delete rows outside this date range
         delete_query = f"""
-            DELETE FROM stock_rate
-            WHERE date < '{latest_start_date}' OR date > '{earliest_end_date}';
+            DELETE FROM stock_prices
+            WHERE price_date < '{latest_start_date}' OR price_date > '{earliest_end_date}';
         """
 
         # Execute the delete query
@@ -293,24 +335,78 @@ class DB:
         print(f"Deleted rows outside the date range {latest_start_date} to {earliest_end_date}.")
 
 
+    def add_stock_price(self, symbol):
+        """Add stock history for a company."""
+        company_id = self.get_company(symbol)
+        print(company_id)
+        company_id = company_id.company_id
+        self.add_stock_price_company_id(company_id, symbol)
+    
+    def add_stock_price_all(self, companies):
+        """Add stock history for a company."""
+        for c in companies: 
+            self.add_stock_price_company_id(c.company_id, c.symbol)
+
+
+company_symbols = [
+    "AAPL",  # Apple Inc.
+    "MSFT",  # Microsoft Corporation
+    "GOOGL",  # Alphabet Inc. (Google)
+    "AMZN",  # Amazon.com Inc.
+    "FB",  # Meta Platforms Inc. (formerly Facebook)
+    "TSLA",  # Tesla Inc.
+    "BRK.B",  # Berkshire Hathaway Inc. (Class B)
+    "NVDA",  # NVIDIA Corporation
+    "JPM",  # JPMorgan Chase & Co.
+    "V",  # Visa Inc.
+    "JNJ",  # Johnson & Johnson
+    "WMT",  # Walmart Inc.
+    "PG",  # Procter & Gamble Co.
+    "DIS",  # The Walt Disney Company
+    "NFLX"  # Netflix Inc.
+]
+
+
 def test():
+
     db = DB(HOST, DB_NAME, PASSWORD, USERNAME, PORT)
 
     try:
         # If the database does not exist, create it
-        #  db.init_connection(dbname='postgres')
+        #db.init_connection(dbname='postgres')
         #db.create_db()
         #db.close_db_if_necessary()  # Close the connection to 'postgres' after creating the database
         
         # Now connect to the newly created database
         db.init_connection()
-        db.exclude_outside_date_range()
+
         #db.create_tables()
         #db.drop_database()
         #db.add_all_companies()
-        #db.add_stock_history_for_selected_companies(ids=list(range(1, 10)))
+        db.add_stock_history_for_selected_companies(symbols=company_symbols)
+        db.exclude_outside_date_range()
     finally:
         db.close_db_if_necessary()
 
+'''def main():
+    db = DB(HOST, DB_NAME, PASSWORD, USERNAME, PORT)
+    db.init_connection(db.db_name)
+    print('API_KEY:', StockClient.api_key)
+
+    # db.create_db()
+    # db.create_tables()
+    
+    # try:
+    #     db.create_db()
+    #     db.create_tables()
+    # except Exception as e:
+    #     print(e)
+
+    db.add_companies_from_csv('companies.csv')
+    companies = db.get_companies()[:25]
+    db.add_stock_price_all(companies)
+'''
+
 if __name__ == '__main__':
     test()
+    # main()

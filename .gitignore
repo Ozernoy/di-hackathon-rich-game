@@ -1,8 +1,11 @@
 /rich
 __pycache__/
 
+
 config.py
 .venv
 .env
 companies.csv
 setting.py
+test_code.ipynb
+test.py

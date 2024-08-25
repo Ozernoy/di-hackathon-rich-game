@@ -1,8 +1,21 @@
 class UI:
 
-    def __init__(self, available_companies) -> None:
-        self.available_companies = available_companies
-        self.list_of_users = self.ask_names()
+    def __init__(self) -> None:
+        pass
+
+    @staticmethod
+    def display_available_companies(available_companies):
+        print("Available companies:")
+        for i, company in available_companies.items():
+            print(f"{i}: {company.name} ({company.symbol})")
+
+    @staticmethod
+    def get_player_choice(player, available_companies):
+        while True:
+            player_choice = int(input(f"{player.name}, choose a company (enter index): "))
+            if player_choice in available_companies:
+                return player_choice
+            print("Invalid choice. Please enter a valid index.")
 
     # The function to get the list with user names
     @staticmethod
@@ -51,7 +64,7 @@ class UI:
 
 if __name__ == '__main__':
     available_companies = ["Apple", "Google", "Microsoft", "Amazon"]
-    gui = GUI(available_companies)
+    gui = UI(available_companies)
     user_choices = gui.combined_users_choices()
     print("\nUser choices:")
     print(user_choices)
