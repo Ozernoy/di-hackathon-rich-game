@@ -7,7 +7,7 @@ class UI:
     def display_available_companies(available_companies):
         print("Available companies:")
         for i, company in available_companies.items():
-            print(f"{i}: {company.name} ({company.symbol})")
+            print(f"{i}: {company.name} ({company.symbol}) - {company.description}")
 
     @staticmethod
     def get_player_choice(player, available_companies):

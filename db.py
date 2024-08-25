@@ -403,7 +403,7 @@ def main():
     # except Exception as e:
     #     print(e)
 
-    # # db.add_companies_from_csv('companies.csv')
+    # db.add_companies_from_csv('companies.csv')
     companies = db.get_companies_no_stock_history()
     # companies = db.get_companies()[:25]
     db.add_stock_price_all(companies)
