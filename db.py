@@ -251,6 +251,7 @@ class DB:
         return self.fetchall(query)
     
     def get_companies_no_stock_history(self):
+        ''' Get all the companies which have no stock history yet. '''
         query = """
             select DISTINCT c.* from companies c 
             left join stock_prices sp using (company_id)
@@ -370,15 +371,17 @@ company_symbols = [
 
 db = DB(HOST, DB_NAME, PASSWORD, USERNAME, PORT)
 
+db = DB(HOST, DB_NAME, PASSWORD, USERNAME, PORT)
+
 def test():
 
     db = DB(HOST, DB_NAME, PASSWORD, USERNAME, PORT)
 
     try:
         # If the database does not exist, create it
-        #db.init_connection(dbname='postgres')
-        #db.create_db()
-        #db.close_db_if_necessary()  # Close the connection to 'postgres' after creating the database
+        db.init_connection(dbname='postgres')
+        db.create_db()
+        db.close_db_if_necessary()  # Close the connection to 'postgres' after creating the database
         
         # Now connect to the newly created database
         db.init_connection()
@@ -392,7 +395,12 @@ def test():
         db.close_db_if_necessary()
 
 def main():
+    db = DB(HOST, DB_NAME, PASSWORD, USERNAME, PORT)
+    #db.init_connection(dbname='postgres')
+    #db.create_db()
+    #db.close_db_if_necessary()  # Close the connection to 'postgres' after creating the database
     db.init_connection(db.db_name)
+    #db.create_tables()
     print('API_KEY:', StockClient.api_key)
 
     # db.create_db()
@@ -404,12 +412,11 @@ def main():
     # except Exception as e:
     #     print(e)
 
-    # db.add_companies_from_csv('companies.csv')
+    #db.add_companies_from_csv('companies.csv')
     companies = db.get_companies_no_stock_history()
     # companies = db.get_companies()[:25]
     db.add_stock_price_all(companies)
     # print(len(companies), companies)
-
 
 
 if __name__ == '__main__':
