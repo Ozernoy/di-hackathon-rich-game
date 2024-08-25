@@ -98,6 +98,16 @@ class DB:
             CREATE INDEX company_id_idx ON stock_rate (company_id);
         """)
 
+        # Create the users table
+        self.execute("""
+            CREATE TABLE users (
+            record_id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            user_name TEXT NOT NULL,
+            company_id INTEGER REFERENCES companies (company_id) ON DELETE CASCADE
+            );
+        """)
+
     def drop_database(self):
         """
         Drops the entire database. Connects to the 'postgres' database first and ensures all active connections are terminated.
@@ -129,7 +139,7 @@ class DB:
             self.connection = None  # Reset connection
 
 
-    def get_filtered_table(self, available_companies):
+    '''def get_filtered_table(self, available_companies):
         """Create a filtered table for specific companies."""
         self.execute(f"""
                     CREATE TABLE filtered_table AS
@@ -138,7 +148,7 @@ class DB:
                      LEFT JOIN companies ON stock_rate.company_id = companies.company_id
                     WHERE name IN {available_companies}
 
-        """)
+        """)'''
 
     def get_company(self, symbol):
         """Retrieve a company from the database by its symbol."""
