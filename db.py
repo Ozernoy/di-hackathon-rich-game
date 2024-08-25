@@ -232,6 +232,37 @@ class DB:
                 self.add_stock_history_all(symbol)
             except Exception as e:
                 print(f"Failed to add stock history for {symbol}: {e}")
+    
+
+    def get_stock_history_date_range(self):
+        """
+        Find the latest start date and the earliest end date of stock history intersection across all companies.
+        Returns a tuple (latest_start_date, earliest_end_date).
+        """
+        # Query to find the latest start date (i.e., the maximum of the earliest dates for all companies)
+        query_latest_start_date = """
+            SELECT MAX(start_date) AS latest_start_date
+            FROM (
+                SELECT MIN(date) AS start_date
+                FROM stock_rate
+                GROUP BY company_id
+            ) AS subquery;
+        """
+
+        # Query to find the earliest end date (i.e., the minimum of the latest dates for all companies)
+        query_earliest_end_date = """
+            SELECT MIN(end_date) AS earliest_end_date
+            FROM (
+                SELECT MAX(date) AS end_date
+                FROM stock_rate
+                GROUP BY company_id
+            ) AS subquery;
+        """
+
+        latest_start_date = self.fetchone(query_latest_start_date).latest_start_date
+        earliest_end_date = self.fetchone(query_earliest_end_date).earliest_end_date
+
+        return latest_start_date, earliest_end_date
 
 
 def test():
@@ -239,16 +270,17 @@ def test():
 
     try:
         # If the database does not exist, create it
-        db.init_connection(dbname='postgres')
-        db.create_db()
-        db.close_db_if_necessary()  # Close the connection to 'postgres' after creating the database
+        #db.init_connection(dbname='postgres')
+        #db.create_db()
+        #db.close_db_if_necessary()  # Close the connection to 'postgres' after creating the database
         
         # Now connect to the newly created database
         db.init_connection()
-        db.create_tables()
+        print(db.get_stock_history_date_range())
+        #db.create_tables()
         #db.drop_database()
-        db.add_all_companies()
-        db.add_stock_history_for_selected_companies(ids=list(range(1, 10)))
+        #db.add_all_companies()
+        #db.add_stock_history_for_selected_companies(ids=list(range(1, 10)))
     finally:
         db.close_db_if_necessary()
 
