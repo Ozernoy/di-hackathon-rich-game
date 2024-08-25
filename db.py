@@ -165,7 +165,7 @@ class DB:
     def add_stock_history_all(self, symbol):
         """Add stock history for a company."""
         company_id = self.get_company(symbol)
-        print(company_id)
+        #print(company_id)
         company_id = company_id.company_id
         data = StockClient.get_ts_monthly(symbol)
         for date, values in data['Monthly Adjusted Time Series'].items():
@@ -181,8 +181,9 @@ class DB:
                     adjusted_close=values['5. adjusted close']
                 )
             except Exception as e:
-                print(date, values)
-                print(e.__class__.__name__, e)
+                #print(date, values)
+                #print(e.__class__.__name__, e)
+                pass
 
 
     def add_all_companies(self, default_description="Default company description"):
@@ -200,6 +201,37 @@ class DB:
                 print(f"Error adding company {name} ({symbol}): {e}")
         print(f"Added {counter} companies.")
 
+    def get_all_companies(self):
+        """Retrieve all companies from the database."""
+        query = "SELECT * FROM companies;"
+        return self.fetchall(query)
+    
+    def get_companies_by_criteria(self, ids=None, names=None, symbols=None):
+        """Retrieve companies based on provided criteria: ids, names, or symbols."""
+        conditions = []
+        if ids:
+            conditions.append("company_id IN ({})".format(','.join(map(str, ids))))
+        if names:
+            formatted_names = ','.join("'{}'".format(name) for name in names)
+            conditions.append("name IN ({})".format(formatted_names))
+        if symbols:
+            formatted_symbols = ','.join("'{}'".format(symbol) for symbol in symbols)
+            conditions.append("symbol IN ({})".format(formatted_symbols))
+        
+        where_clause = " OR ".join(conditions)
+        query = "SELECT * FROM companies WHERE {};".format(where_clause)
+        return self.fetchall(query)
+    
+    def add_stock_history_for_selected_companies(self, ids=None, names=None, symbols=None):
+        """Add stock history for selected companies based on IDs, names, or symbols."""
+        companies = self.get_companies_by_criteria(ids=ids, names=names, symbols=symbols)
+        for company in companies:
+            symbol = company.symbol
+            print(f"Adding stock history for {company.name} ({symbol})")
+            try:
+                self.add_stock_history_all(symbol)
+            except Exception as e:
+                print(f"Failed to add stock history for {symbol}: {e}")
 
 
 def test():
@@ -207,16 +239,16 @@ def test():
 
     try:
         # If the database does not exist, create it
-        #db.init_connection(dbname='postgres')
-        #db.create_db()
-        #db.close_db_if_necessary()  # Close the connection to 'postgres' after creating the database
+        db.init_connection(dbname='postgres')
+        db.create_db()
+        db.close_db_if_necessary()  # Close the connection to 'postgres' after creating the database
         
         # Now connect to the newly created database
         db.init_connection()
-        #db.create_tables()
+        db.create_tables()
         #db.drop_database()
         db.add_all_companies()
-        
+        db.add_stock_history_for_selected_companies(ids=list(range(1, 10)))
     finally:
         db.close_db_if_necessary()
 
