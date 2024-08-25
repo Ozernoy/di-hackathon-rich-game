@@ -169,7 +169,13 @@ class DB:
         name = process_string(name)
         symbol = process_string(symbol)
         description = process_string(description)
-        query = f"INSERT INTO companies (name, symbol, description) VALUES ({name}, {symbol}, {description});"
+        query = f"""
+            INSERT INTO companies (name, symbol, description) 
+            VALUES ({name}, {symbol}, {description})
+            ON CONFLICT (symbol) DO UPDATE
+            SET name = EXCLUDED.name,
+                description = EXCLUDED.description;
+        """
         self.execute(query)
 
     def add_companies_from_csv(self, filename):
@@ -192,11 +198,8 @@ class DB:
 
     def add_stock_price_company_id(self, company_id, symbol):
         """Add stock history for a company."""
-        company_id = self.get_company(symbol)
-        #print(company_id)
-        company_id = company_id.company_id
         data = StockClient.get_ts_monthly(symbol)
-        print(list(data.keys()), data)
+        print(list(data.keys()))
         for date, values in data['Monthly Adjusted Time Series'].items():
             try:
                 self.insert_stock_prices(
@@ -235,6 +238,15 @@ class DB:
         query = "SELECT * FROM companies;"
         return self.fetchall(query)
     
+    def get_companies_no_stock_history(self):
+        query = """
+            select DISTINCT c.* from companies c 
+            left join stock_prices sp using (company_id)
+            where sp.stock_price_id is null;
+        """
+        return self.fetchall(query)
+
+
     def get_companies_by_criteria(self, ids=None, names=None, symbols=None):
         """Retrieve companies based on provided criteria: ids, names, or symbols."""
         conditions = []
@@ -358,11 +370,13 @@ def main():
     # except Exception as e:
     #     print(e)
 
-    db.add_companies_from_csv('companies.csv')
-    companies = db.get_companies()[:25]
+    # # db.add_companies_from_csv('companies.csv')
+    companies = db.get_companies_no_stock_history()
+    # companies = db.get_companies()[:25]
     db.add_stock_price_all(companies)
+    # print(len(companies), companies)
 
 
 if __name__ == '__main__':
-    test()
-    # main()
+    # test()
+    main()
