@@ -36,7 +36,7 @@ def plot_portfolio_pie(players):
         
         # Group by company_name and sum the values
         value_by_company = latest_portfolio.groupby('name')['value'].sum()
-        value_by_company = value_by_company.sort_values(by='value', ascending=False)
+        value_by_company = value_by_company.sort_values(ascending=False)
         
         # Plotting the pie chart
         plt.figure(figsize=(8, 6))
