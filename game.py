@@ -9,6 +9,8 @@ from ui import UI
 from db import DB
 from settings import *
 from visualization import animate_portfolio_values
+import tkinter as tk
+from tkinter import simpledialog, messagebox, Toplevel, Listbox, SINGLE, Button, Label
 
 class  Player:
     def __init__(self, name, initial_budget=1000):
@@ -152,6 +154,7 @@ class Game:
         # self.visualizer.display_final_results(self.players)
         print(f"The winner is {winner.name}!")
 
+
 def main_test():
 
     # Initialize game parameters
@@ -196,8 +199,3 @@ def main():
 if __name__ == "__main__":
     main()
     # main_test()
-
-
-
-
-    
