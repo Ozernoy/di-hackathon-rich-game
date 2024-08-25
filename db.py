@@ -263,6 +263,24 @@ class DB:
         earliest_end_date = self.fetchone(query_earliest_end_date).earliest_end_date
 
         return latest_start_date, earliest_end_date
+    
+    def exclude_outside_date_range(self):
+        """
+        Exclude (delete) all rows from the stock_rate table that fall outside 
+        the intersection of the date ranges across all companies.
+        """
+        # Get the latest start date and earliest end date that overlap across all companies
+        latest_start_date, earliest_end_date = self.get_stock_history_date_range()
+
+        # Delete rows outside this date range
+        delete_query = f"""
+            DELETE FROM stock_rate
+            WHERE date < '{latest_start_date}' OR date > '{earliest_end_date}';
+        """
+
+        # Execute the delete query
+        self.execute(delete_query)
+        print(f"Deleted rows outside the date range {latest_start_date} to {earliest_end_date}.")
 
 
 def test():
@@ -270,13 +288,13 @@ def test():
 
     try:
         # If the database does not exist, create it
-        #db.init_connection(dbname='postgres')
+        #  db.init_connection(dbname='postgres')
         #db.create_db()
         #db.close_db_if_necessary()  # Close the connection to 'postgres' after creating the database
         
         # Now connect to the newly created database
         db.init_connection()
-        print(db.get_stock_history_date_range())
+        db.exclude_outside_date_range()
         #db.create_tables()
         #db.drop_database()
         #db.add_all_companies()
